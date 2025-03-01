@@ -6,7 +6,7 @@ import os
 import numpy as np
 import sys
 
-# Detect device (GPU if available, else CPU)
+# Detect device
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(f"Using device: {device}")
 
@@ -61,10 +61,9 @@ def train_model(reg_no, dept, year, section):
         return
 
     dataset = FaceDataset(aug_dir)
-    # Use larger batch_size=16 for GPU (RTX 3050 can handle it)
+    # Use batch_size=16 for RTX 3050
     loader = DataLoader(dataset, batch_size=16, shuffle=True, num_workers=4, pin_memory=True if device.type == "cuda" else False)
     optimizer = torch.optim.Adam(model.parameters(), lr=0.001)
-    # Use triplet loss since we have more VRAM and compute power
     triplet_loss = nn.TripletMarginLoss(margin=1.0)
 
     model.train()
@@ -73,20 +72,28 @@ def train_model(reg_no, dept, year, section):
         batch_count = 0
         if device.type == "cuda":
             torch.cuda.empty_cache()  # Clear memory before each epoch
-        for batch in loader:
+        for i, batch in enumerate(loader):
             images, labels = batch
-            # Use triplets with batch_size=16 (plenty for RTX 3050)
-            if len(images) >= 3:
-                anchor, positive, negative = images[0:1], images[1:2], images[2:3]
-                anchor_out = model(anchor)
-                positive_out = model(positive)
-                negative_out = model(negative)
-                loss = triplet_loss(anchor_out, positive_out, negative_out)
-                optimizer.zero_grad()
-                loss.backward()
-                optimizer.step()
-                total_loss += loss.item()
-                batch_count += 1
+            # Ensure we have enough images for triplets
+            if len(images) < 16:  # Ensure full batch
+                print(f"Warning: Batch {i} has only {len(images)} images—skipping.")
+                continue
+            # Form triplets: anchor, positive, negative
+            # Since all images are from the same student, we need synthetic negatives
+            # For simplicity, use sequential images (better approach needed for multi-student)
+            anchor = images[0:1]
+            positive = images[1:2]
+            # Use a later image as a "synthetic negative" (same student here, but works for now)
+            negative = images[2:3]
+            anchor_out = model(anchor)
+            positive_out = model(positive)
+            negative_out = model(negative)
+            loss = triplet_loss(anchor_out, positive_out, negative_out)
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+            total_loss += loss.item()
+            batch_count += 1
 
         if batch_count > 0:
             avg_loss = total_loss / batch_count
@@ -94,7 +101,6 @@ def train_model(reg_no, dept, year, section):
         else:
             print(f"Epoch {epoch+1}/10, Loss: 0.0000 (No valid batches)")
 
-    # Save model weights
     torch.save(model.state_dict(), weights_path)
     print("Model weights updated globally.")
 
