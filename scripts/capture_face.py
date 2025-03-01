@@ -23,7 +23,6 @@ def is_face_in_box(landmarks, box):
             min(face_y) > y_min and max(face_y) < y_max)
 
 def capture_on_blink(student_id):
-    # Load student details from index (no defaults)
     index_path = "students/students_index.json"
     if not os.path.exists(index_path):
         raise FileNotFoundError("Student index not found—create profiles first.")
@@ -92,7 +91,7 @@ def capture_on_blink(student_id):
                         eyes_closed = True
                     elif avg_ear > ear_open_threshold and eyes_closed and (current_time - last_blink_time > blink_cooldown):
                         blinked = True
-                        last_blink_time = current_time
+                        last_blink_time = time()
                         face = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
                         x, y = min([lm[0] for lm in landmarks]), min([lm[1] for lm in landmarks])
                         w, h = max([lm[0] for lm in landmarks]) - x, max([lm[1] for lm in landmarks]) - y
@@ -124,6 +123,8 @@ def capture_on_blink(student_id):
 
 if __name__ == "__main__":
     student_id = input("Enter student register number: ")
+    if not student_id:
+        raise ValueError("Student register number must be provided.")
     try:
         capture_on_blink(student_id)
     except Exception as e:

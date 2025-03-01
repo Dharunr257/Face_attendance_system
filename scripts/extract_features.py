@@ -30,7 +30,7 @@ class FaceNetLite(nn.Module):
         x = self.fc1(x)
         return x
 
-def augment_images(image_path, output_dir, num_samples=10):  # Back to 10 variations
+def augment_images(image_path, output_dir, num_samples=10):
     img = Image.open(image_path).convert('L')
     transforms = [
         T.RandomRotation(10), T.RandomRotation(20),
@@ -97,6 +97,16 @@ def extract_and_save(reg_no, dept, year, section, model):
     print(f"Saved embedding for {reg_no} with {len(embeddings)} unique images")
 
 if __name__ == "__main__":
+    if len(sys.argv) < 5:
+        # Prompt for input without defaults
+        reg_no = input("Enter student register number: ")
+        dept = input("Enter department (e.g., AI&DS): ")
+        year = input("Enter year (e.g., 2022): ")
+        section = input("Enter section (e.g., Section_A): ")
+        if not all([reg_no, dept, year, section]):  # Ensure all inputs are provided
+            raise ValueError("All student details (reg_no, dept, year, section) must be provided.")
+    else:
+        reg_no, dept, year, section = sys.argv[1:5]
     model = FaceNetLite()
     weights_path = 'model_weights.pt'
     if os.path.exists(weights_path):
@@ -104,5 +114,4 @@ if __name__ == "__main__":
     else:
         print("No model weights found—using untrained model for initial extraction.")
     model.eval()
-    reg_no, dept, year, section = sys.argv[1:5]
     extract_and_save(reg_no, dept, year, section, model)

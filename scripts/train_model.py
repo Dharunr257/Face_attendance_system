@@ -70,20 +70,22 @@ def train_model(reg_no, dept, year, section):
     for epoch in range(10):
         total_loss = 0
         batch_count = 0
+        total_batches = len(loader)  # For percentage calculation
         if device.type == "cuda":
             torch.cuda.empty_cache()  # Clear memory before each epoch
+
         for i, batch in enumerate(loader):
+            # Calculate and display running percentage
+            percentage = ((i + 1) / total_batches) * 100
+            print(f"Epoch {epoch+1}/10 - Executed {percentage:.1f}%", end='\r')  # Update on same line
+
             images, labels = batch
-            # Ensure we have enough images for triplets
-            if len(images) < 16:  # Ensure full batch
-                print(f"Warning: Batch {i} has only {len(images)} images—skipping.")
+            if len(images) < 16:  # Ensure full batch for triplets
+                print(f"\nWarning: Batch {i} has only {len(images)} images—skipping.")
                 continue
             # Form triplets: anchor, positive, negative
-            # Since all images are from the same student, we need synthetic negatives
-            # For simplicity, use sequential images (better approach needed for multi-student)
             anchor = images[0:1]
             positive = images[1:2]
-            # Use a later image as a "synthetic negative" (same student here, but works for now)
             negative = images[2:3]
             anchor_out = model(anchor)
             positive_out = model(positive)
@@ -95,6 +97,7 @@ def train_model(reg_no, dept, year, section):
             total_loss += loss.item()
             batch_count += 1
 
+        print()  # New line after epoch completion
         if batch_count > 0:
             avg_loss = total_loss / batch_count
             print(f"Epoch {epoch+1}/10, Loss: {avg_loss:.4f}")
@@ -106,10 +109,13 @@ def train_model(reg_no, dept, year, section):
 
 if __name__ == "__main__":
     if len(sys.argv) < 5:
-        reg_no = input("Enter student register number: ") or "1001"
-        dept = input("Enter department (e.g., AI&DS): ") or "AI&DS"
-        year = input("Enter year (e.g., 2022): ") or "2022"
-        section = input("Enter section (e.g., Section_A): ") or "Section_A"
+        # Prompt for input without defaults
+        reg_no = input("Enter student register number: ")
+        dept = input("Enter department (e.g., AI&DS): ")
+        year = input("Enter year (e.g., 2022): ")
+        section = input("Enter section (e.g., Section_A): ")
+        if not all([reg_no, dept, year, section]):  # Ensure all inputs are provided
+            raise ValueError("All student details (reg_no, dept, year, section) must be provided.")
     else:
         reg_no, dept, year, section = sys.argv[1:5]
     train_model(reg_no, dept, year, section)

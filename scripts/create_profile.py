@@ -49,6 +49,10 @@ def create_profile():
     section = input("Enter section (e.g., Section_A): ")
     photo_dir = input("Enter path to 10-15 photos folder: ")
 
+    # Validate inputs
+    if not all([reg_no, name, dept, year, section, photo_dir]):
+        raise ValueError("All student details (reg_no, name, dept, year, section, photo_dir) must be provided.")
+
     student_path = f"students/{dept}/{year}/{section}/{reg_no}"
     os.makedirs(student_path, exist_ok=True)
     os.makedirs(f"{student_path}/images", exist_ok=True)

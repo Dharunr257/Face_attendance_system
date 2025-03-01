@@ -54,6 +54,8 @@ def compare_faces(student_id, model, retries=3):
     today = datetime.now().strftime("%Y/%m_February/%d")
     att_path = f"attendance/{today}/{dept}/{year}/{section}/{student_id}"
     status = input("Enter 'in' or 'out': ").lower()
+    if not status:
+        raise ValueError("Status ('in' or 'out') must be provided.")
     temp_img_path = f"temp/{student_id}.jpg"
 
     attempt = 0
@@ -102,6 +104,8 @@ if __name__ == "__main__":
     model = FaceNetLite()
     
     student_id = sys.argv[1] if len(sys.argv) > 1 else input("Enter student register number: ")
+    if not student_id:
+        raise ValueError("Student register number must be provided.")
     try:
         compare_faces(student_id, model)
     except Exception as e:
