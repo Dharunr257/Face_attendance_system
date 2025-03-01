@@ -61,7 +61,6 @@ def create_profile():
     with open(f"{student_path}/profile.json", 'w') as f:
         json.dump(profile, f)
 
-    # Update students_index.json
     index_path = "students/students_index.json"
     if os.path.exists(index_path):
         with open(index_path, 'r') as f:
@@ -72,7 +71,6 @@ def create_profile():
     with open(index_path, 'w') as f:
         json.dump(index, f)
 
-    # Train, extract, re-extract
     python_path = "C:/Program Files/Python310/python.exe"
     extract_script = "e:/Py/face attendance updated/scripts/extract_features.py"
     train_script = "e:/Py/face attendance updated/scripts/train_model.py"

@@ -10,6 +10,10 @@ import shutil
 import numpy as np
 import subprocess
 
+# Detect device
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+print(f"Using device: {device}")
+
 class FaceNetLite(nn.Module):
     def __init__(self):
         super(FaceNetLite, self).__init__()
@@ -29,7 +33,6 @@ class FaceNetLite(nn.Module):
         return x
 
 def compare_faces(student_id, model, retries=3):
-    # Load student details from index
     index_path = "students/students_index.json"
     if not os.path.exists(index_path):
         raise FileNotFoundError("Student index not found—create profiles first.")
@@ -39,10 +42,11 @@ def compare_faces(student_id, model, retries=3):
         raise ValueError(f"No profile found for student {student_id}")
     dept, year, section = index[student_id]["dept"], index[student_id]["year"], index[student_id]["section"]
 
+    model = model.to(device)
     model.eval()
     weights_path = 'model_weights.pt'
     if os.path.exists(weights_path):
-        model.load_state_dict(torch.load(weights_path))
+        model.load_state_dict(torch.load(weights_path, map_location=device))
     else:
         print("Warning: No model weights found—using untrained model. This may affect accuracy.")
     model.eval()
@@ -58,18 +62,18 @@ def compare_faces(student_id, model, retries=3):
         if temp_img is None:
             raise FileNotFoundError(f"Could not load temporary image for {student_id} at {temp_img_path}")
         
-        face_tensor = torch.tensor(temp_img.astype(np.float32) / 255.0).unsqueeze(0).unsqueeze(0)
+        face_tensor = torch.tensor(temp_img.astype(np.float32) / 255.0).unsqueeze(0).unsqueeze(0).to(device)
         with torch.no_grad():
             temp_embedding = model(face_tensor)
+            temp_embedding = temp_embedding.cpu()  # Move to CPU for comparison
         
         stored_path = f"students/{dept}/{year}/{section}/{student_id}/embeddings.npy"
         if not os.path.exists(stored_path):
             raise FileNotFoundError(f"No embedding found for {student_id}")
         stored_embedding = np.load(stored_path)
-        stored_embedding = torch.tensor(stored_embedding, dtype=torch.float32)
+        stored_embedding = torch.tensor(stored_embedding, dtype=torch.float32).to(device)
 
         similarity = torch.nn.functional.cosine_similarity(temp_embedding, stored_embedding, dim=1).item()
-        # Convert similarity to percentage match (0 to 1 → 0% to 100%)
         match_percentage = (similarity + 1) / 2 * 100  # Cosine similarity ranges from -1 to 1, map to 0-100%
         threshold = 80  # 80% match threshold
         result = "present" if match_percentage > threshold else "absent"
